@@ -1,0 +1,52 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Isaac Lab / Isaac Sim (runtime outputs) ----
+# ignore directory contents, but keep the empty folders themselves in git
+logs/*
+!logs/.gitkeep
+outputs/*
+!outputs/.gitkeep
+!outputs/rsl_rl/
+!outputs/hpo/
+outputs/rsl_rl/*
+!outputs/rsl_rl/.gitkeep
+outputs/hpo/*
+!outputs/hpo/.gitkeep
+*.pt
+*.onnx
+*.pkl
+
+# ---- Optuna studies ----
+hpo_studies/*.db
+hpo_studies/*.log
+*.sqlite
+*.sqlite3
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+
+# ---- IDE / editors ----
+.vscode/
+.idea/
+*.swp
+pyrightconfig.json
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- uv ----
+# uv.lock is intentionally committed for reproducible environments
