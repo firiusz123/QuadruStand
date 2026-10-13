@@ -1,0 +1,22 @@
+# QuadruStand: network-shape benchmark and stand-up reward for quadruped locomotion in Isaac Lab.
+#
+# Isaac Lab / Isaac Sim / torch are NOT listed here: they are installed into the project's
+# .venv by the Isaac Lab installer (see README.md, "Setup"). This file only declares our own package.
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+name = "quadru-stand"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "optuna>=4.0",
+]
+
+[project.entry-points."isaaclab.tasks"]
+quadru_stand = "quadru_stand.tasks"

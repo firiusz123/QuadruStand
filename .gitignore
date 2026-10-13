@@ -47,6 +47,3 @@ pyrightconfig.json
 # ---- OS ----
 .DS_Store
 Thumbs.db
-
-# ---- uv ----
-# uv.lock is intentionally committed for reproducible environments
