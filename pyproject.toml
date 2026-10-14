@@ -21,3 +21,13 @@ dependencies = [
 
 [project.entry-points."isaaclab.tasks"]
 quadru_stand = "quadru_stand.tasks"
+
+# Pyrefly (Cursor's default Python language server). The interpreter query
+# is enough for packages that actually live in .venv (torch, isaacsim, optuna).
+# Isaac Lab is an editable install that points at the source checkout, not a
+# copy inside .venv — see README "Editable links".
+[tool.pyrefly]
+preset = "basic"
+python-interpreter-path = ".venv/bin/python"
+project-includes = ["src", "scripts", "tests"]
+search-path = ["src"]

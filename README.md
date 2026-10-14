@@ -36,7 +36,7 @@ QuadruStand/
 │   ├── hpo/                        #   Optuna study, objective, search space, metric parsing
 │   ├── analysis/                   #   network-shape comparison, Optuna plots, run summaries
 │   ├── eval/                       #   deterministic policy evaluation and video rendering
-│   └── tools/                      #   policy export (JIT / ONNX)
+│   └── tools/                      #   Pyrefly env shim, policy export (JIT / ONNX)
 ├── configs/
 │   ├── network_shapes/             #   architecture comparison matrix (YAML)
 │   └── hpo/                        #   study settings: trials, sampler, pruner, metric, timeout
@@ -79,7 +79,12 @@ source .venv/bin/activate
 
 # 4. This project (editable) and Optuna
 uv pip install -e .
+
+# 5. Pyrefly (Cursor language server): expose Isaac Lab source paths
+./scripts/tools/configure_pyrefly.sh
 ```
+
+Then reload the Cursor window (Command Palette → **Developer: Reload Window**) so Pyrefly rereads `.venv`.
 
 ### Verification
 
@@ -104,6 +109,23 @@ NVIDIA Omniverse EULA.
   `pyproject.toml` and remove Isaac Lab. Add packages with `uv pip install`.
 - **Reproducibility.** After a verified installation, record the exact package set with
   `uv pip freeze > requirements.lock` and commit it.
+
+### Editor (Pyrefly)
+
+Cursor uses **Pyrefly** as the Python language server. `[tool.pyrefly]` in `pyproject.toml`
+points it at `.venv/bin/python`, which is enough for packages that actually live in
+`.venv` (`torch`, `isaacsim`, `optuna`).
+
+Isaac Lab is different: the installer registers it with setuptools *import-hook* `.pth`
+files. Python can run those hooks; Pyrefly cannot, so imports like `isaaclab.utils` look
+missing even though `python -c "import isaaclab"` works.
+
+`scripts/tools/configure_pyrefly.sh` reads the hook mappings already in `.venv` (so it
+follows *this* machine's Isaac Lab checkout) and writes a path-based
+`isaaclab_editable_paths.pth` next to them. Rerun the script after reinstalling Isaac Lab
+or moving the checkout. The generated file stays in `.venv` and is not committed.
+
+If the editor still reports `Cannot find module isaaclab...`, reload the window.
 
 ## Usage
 
