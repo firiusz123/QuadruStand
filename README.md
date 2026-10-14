@@ -114,10 +114,12 @@ isaaclab list_envs | grep QuadruStand                # confirm the task is regis
 python -m pytest tests/test_registration.py -q       # registration tests
 
 # single training run, baseline network [512, 256, 128] (default agent)
-isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 --headless
+
+#to turn on the visulazation put alongside the command --viz flag 
+isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 
 
 # other network sizes, selected with --agent
-isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 --headless \
+isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0  \
     --agent rsl_rl_small_cfg_entry_point             # [128, 128]
 #   --agent rsl_rl_medium_cfg_entry_point            # [256, 128, 64]
 #   --agent rsl_rl_large_cfg_entry_point             # [1024, 512, 256]
