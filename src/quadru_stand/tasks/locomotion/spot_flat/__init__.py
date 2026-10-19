@@ -19,8 +19,12 @@ gym.register(
         # Default agent (used when `--agent` is not given). Key name matches the upstream Spot task.
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatPPORunnerCfg",
         # Extra agents for the network-size benchmark, selected with `--agent <key>`.
+        "rsl_rl_extra_small_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatExtraSmallPPORunnerCfg",
         "rsl_rl_small_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatSmallPPORunnerCfg",
         "rsl_rl_medium_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatMediumPPORunnerCfg",
         "rsl_rl_large_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatLargePPORunnerCfg",
+        "rsl_rl_deep_1_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatDeep_1_PPORunnerCfg",
+        "rsl_rl_deep_2_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatDeep_2_PPORunnerCfg",
+        "rsl_rl_deep_5_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatDeep_5_PPORunnerCfg",
     },
 )
