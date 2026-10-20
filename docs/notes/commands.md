@@ -9,14 +9,30 @@ source .venv/bin/activate
 Status column: **verified** = checked against this install's `--help` output or source, or run on this machine.
 **not run** = the flags are real, but I did not run that exact command here. Check the output yourself the first time.
 
-Shorthand used below: `TASK=QuadruStand-Velocity-Flat-Spot-v0`.
+This project has one task, `QuadruStand-Velocity-Flat-Spot-v0`, so every command below uses it literally and can be
+copied as is.
 
-| Agent key (`--agent`) | Network (actor and critic) | Log folder `logs/rsl_rl/...` |
-|---|---|---|
-| *(none)*, i.e. `rsl_rl_cfg_entry_point` | `[512, 256, 128]` | `quadrustand_spot_flat_baseline` |
-| `rsl_rl_small_cfg_entry_point` | `[128, 128]` | `quadrustand_spot_flat_small` |
-| `rsl_rl_medium_cfg_entry_point` | `[256, 128, 64]` | `quadrustand_spot_flat_medium` |
-| `rsl_rl_large_cfg_entry_point` | `[1024, 512, 256]` | `quadrustand_spot_flat_large` |
+### The names (read this first)
+
+One variant has **four different names**, and they are easy to mix up. The command line only ever takes the
+**agent key** (second column), never the variant label.
+
+| Variant label (our word) | **Agent key** = what you pass to `--agent` | Config class (in `rsl_rl_ppo_cfg.py`) | `experiment_name` = log folder `logs/rsl_rl/...` | Network (actor and critic) |
+|---|---|---|---|---|
+| baseline | `rsl_rl_cfg_entry_point` (the default; **no** `baseline` in the key) | `QuadruStandSpotFlatPPORunnerCfg` | `quadrustand_spot_flat_baseline` | `[512, 256, 128]` |
+| small | `rsl_rl_small_cfg_entry_point` | `QuadruStandSpotFlatSmallPPORunnerCfg` | `quadrustand_spot_flat_small` | `[128, 128]` |
+| medium | `rsl_rl_medium_cfg_entry_point` | `QuadruStandSpotFlatMediumPPORunnerCfg` | `quadrustand_spot_flat_medium` | `[256, 128, 64]` |
+| large | `rsl_rl_large_cfg_entry_point` | `QuadruStandSpotFlatLargePPORunnerCfg` | `quadrustand_spot_flat_large` | `[1024, 512, 256]` |
+
+- The **agent key** is a key in the task's registration kwargs (`spot_flat/__init__.py`). `--agent small` would fail.
+- The **config class** is what the key points to. The **experiment name** is set inside that class and decides the log
+  folder. The command line never takes either of these.
+- The **task id** is a different thing again: `--task QuadruStand-Velocity-Flat-Spot-v0` selects the environment,
+  and one task id has all four keys.
+- `--experiment_name <name>` also exists and overrides the log folder name for a run. Without it the folder comes
+  from the config class.
+- Each run folder records the key it was started with in `run.json` (`"metadata": {"agent": "..."}`). The experiment
+  name and the key are therefore both visible after the fact (see section 6).
 
 ## 1. Check that everything is registered
 
@@ -31,9 +47,9 @@ Shorthand used below: `TASK=QuadruStand-Velocity-Flat-Spot-v0`.
 
 | Goal | Command | Status |
 |---|---|---|
-| Quick smoke test (10 iterations) | `isaaclab train --rl_library rsl_rl --task $TASK --num_envs 512 --max_iterations 10` | verified |
-| Same, small network | add `--agent rsl_rl_small_cfg_entry_point` | verified |
-| Full-size run | `isaaclab train --rl_library rsl_rl --task $TASK --num_envs 4096` | not run |
+| Quick smoke test (10 iterations) | `isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 --num_envs 512 --max_iterations 10` | verified |
+| Same, small-network variant | add `--agent rsl_rl_small_cfg_entry_point` (the key, not the word "small") | verified |
+| Full-size run | `isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 --num_envs 4096` | not run |
 | Fix the random seed | add `--seed 1` | not run |
 | Tag the run folder | add `--run_name my_test` (suffix on the timestamp folder) | not run |
 | Train with a window | add `--visualizer kit` (alias `--viz kit`), usually with fewer envs, e.g. `--num_envs 64` | not run |
@@ -42,7 +58,6 @@ Shorthand used below: `TASK=QuadruStand-Velocity-Flat-Spot-v0`.
 
 Notes:
 
-- Replace `$TASK` with the real id (the shell does not know it), or run `TASK=QuadruStand-Velocity-Flat-Spot-v0` first.
 - **Headless is the default.** Without `--visualizer`, no window opens. There is no `--headless` flag in this Isaac Lab version.
 - The default length is **20000 iterations**. Always add `--max_iterations N` unless you mean it. Stop a run with `Ctrl+C`.
 - Plain `isaaclab train --help` shows only `--rl_library`. For the real option list use:
@@ -59,23 +74,25 @@ isaaclab train --rl_library rsl_rl --help
 
 | Goal | Command | Status |
 |---|---|---|
-| Resume from the newest run of this task and agent | `isaaclab train --rl_library rsl_rl --task $TASK --checkpoint latest --max_iterations 500` | not run |
-| Resume from a specific file | `isaaclab train --rl_library rsl_rl --task $TASK --checkpoint logs/rsl_rl/<experiment>/<timestamp>/model_300.pt --max_iterations 500` | not run |
+| Resume from the newest run of this task and agent key (baseline key if `--agent` is omitted) | `isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 --checkpoint latest --max_iterations 500` | not run |
+| Resume from a specific file | `isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 --checkpoint logs/rsl_rl/<experiment>/<timestamp>/model_300.pt --max_iterations 500` | not run |
 
 Behaviour (from the rsl_rl source in `.venv`):
 
 - `--max_iterations` then means **additional** iterations: training runs from the checkpoint's iteration up to that
   iteration plus `max_iterations`.
 - A resumed run writes to a **new** timestamp folder. The old folder is not modified.
-- `latest` and `best` only consider runs of the same library, task and agent. If you used `--agent`, repeat it.
-- The network shape in the checkpoint must match the agent config. A `small` checkpoint will not load into the `large` agent.
+- `latest` and `best` only consider runs with the same library, task id and **agent key** (matched against the
+  `run.json` of each run). If you trained with `--agent <key>`, repeat that key.
+- The network shape in the checkpoint must match the config class the key selects. A checkpoint from the small
+  variant will not load when `--agent` selects the large variant's key.
 
 ## 4. Play a trained policy (watch it)
 
 | Goal | Command | Status |
 |---|---|---|
-| Play the latest run of this agent | `isaaclab play --rl_library rsl_rl --task $TASK --num_envs 16 --visualizer kit` | not run |
-| Same, small agent | add `--agent rsl_rl_small_cfg_entry_point` | not run |
+| Play the latest run of the selected agent key (baseline if `--agent` is omitted) | `isaaclab play --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 --num_envs 16 --visualizer kit` | not run |
+| Same, small-network variant | add `--agent rsl_rl_small_cfg_entry_point` | not run |
 | Play a specific checkpoint | add `--checkpoint logs/rsl_rl/<experiment>/<timestamp>/model_300.pt` | not run |
 | Play the newest or the best checkpoint | add `--checkpoint latest` or `--checkpoint best` | not run |
 | Run in real time | add `--real-time` | not run |
@@ -84,8 +101,10 @@ Behaviour (from the rsl_rl source in `.venv`):
 
 Notes:
 
-- With **no** `--checkpoint`, play loads the latest run's latest model in the log folder of the selected agent.
-  So for the small network always pass `--agent rsl_rl_small_cfg_entry_point`, otherwise play looks in the baseline folder.
+- With **no** `--checkpoint`, play loads the latest model of the latest run in the log folder named by the selected
+  config's `experiment_name`. So for the small variant always pass `--agent rsl_rl_small_cfg_entry_point`, otherwise
+  play looks in the baseline folder (`quadrustand_spot_flat_baseline`).
+- `--task` is always needed (it selects the environment). `--agent` is needed only for the non-baseline keys.
 - Play uses the policy's **mean** action (no exploration noise).
 - I did not check what the "play-mode overrides" change. `--train_env_cfg` turns them off.
 
@@ -99,11 +118,16 @@ Notes:
 
 Then open `http://localhost:6006` in a browser. Useful curves:
 
-- `Train/mean_reward` and `Train/mean_episode_length` (overall progress; I did not check these exact tag names, browse the tag list)
-- `Metrics/base_velocity/error_vel_xy` and `error_vel_yaw`: velocity tracking error vs the command
-- `Episode_Reward/<term>`: the contribution of each reward term
-- `Episode_Termination/body_contact`: fraction of episodes ending in a fall
+Tag names, read from a real event file of this project:
+
+- `Train/mean_reward`, `Train/mean_episode_length` (overall progress; the `.../time` variants plot against wall-clock time)
+- `Metrics/base_velocity/error_vel_xy`, `Metrics/base_velocity/error_vel_yaw`: velocity tracking error vs the command
+- `Metrics/success_rate`
+- `Episode_Reward/<term>`: the contribution of each reward term (`gait`, `air_time`, `base_orientation`, ...)
+- `Episode_Termination/body_contact`, `.../time_out`, `.../terrain_out_of_bounds`: why episodes ended (body contact = a fall)
 - `Curriculum/terrain_levels`
+- `Loss/value`, `Loss/surrogate`, `Loss/entropy`, `Loss/learning_rate`, `Policy/mean_std`: PPO internals
+- `Perf/total_fps`, `Perf/collection_time`, `Perf/learning_time`: speed
 
 The same numbers also print in the terminal every iteration.
 
@@ -115,6 +139,7 @@ Every run folder `logs/rsl_rl/<experiment>/<timestamp>/` contains `model_<iter>.
 | Goal | Command | Status |
 |---|---|---|
 | List all runs | `find logs -maxdepth 3 -mindepth 2 -type d \| sort` | verified |
+| Which `--task` and `--agent` key a run was started with | `cat logs/rsl_rl/<experiment>/<timestamp>/run.json` (fields `task` and `metadata.agent`) | verified |
 | Network size of a run | `grep -n hidden_dims -A3 logs/rsl_rl/<experiment>/<timestamp>/params/agent.yaml` | verified |
 | Compare two runs' env config | `diff logs/rsl_rl/<a>/params/env.yaml logs/rsl_rl/<b>/params/env.yaml` | verified |
 | Compare two runs' agent config | `diff logs/rsl_rl/<a>/params/agent.yaml logs/rsl_rl/<b>/params/agent.yaml` | verified |
@@ -130,8 +155,8 @@ For the baseline this shows the first layer `(512, 48)` (hidden size, input size
 
 | Goal | Command | Status |
 |---|---|---|
-| Run the env with **zero** actions (robot holds the default pose) | `isaaclab zero_agent --task $TASK --num_envs 4 --max_steps 500 --visualizer kit` | options verified; not run |
-| Run the env with **random** actions | `isaaclab random_agent --task $TASK --num_envs 4 --max_steps 500 --visualizer kit` | options verified; not run |
+| Run the env with **zero** actions (robot holds the default pose) | `isaaclab zero_agent --task QuadruStand-Velocity-Flat-Spot-v0 --num_envs 4 --max_steps 500 --visualizer kit` | options verified; not run |
+| Run the env with **random** actions | `isaaclab random_agent --task QuadruStand-Velocity-Flat-Spot-v0 --num_envs 4 --max_steps 500 --visualizer kit` | options verified; not run |
 | Pick the physics backend (presets) | add `physics=newton_mjwarp` (no dashes) | not run |
 
 Preset options for a task appear at the end of `--help` when `--task=...` is passed. The Spot config defines the
@@ -161,7 +186,8 @@ Seen in `isaaclab --help` (not tried here): `train_multigpu`, `benchmark`, `micr
 | `isaaclab: command not found` | the environment is not activated (`source .venv/bin/activate`) |
 | Task not listed by `list_envs` | not activated, or `uv pip install -e .` was not run after changing `pyproject.toml` |
 | `Could not find configuration ... Existing agent configuration entry points` | wrong `--agent` key; the message lists the valid keys |
-| Play or resume picks the wrong folder | missing `--agent` (the log folder is chosen by the agent's `experiment_name`) |
-| Checkpoint does not load (size mismatch) | the agent variant differs from the one the checkpoint was trained with |
+| Play or resume picks the wrong folder | missing `--agent` key (the log folder comes from the selected config's `experiment_name`) |
+| Checkpoint does not load (size mismatch) | the `--agent` key differs from the one the checkpoint was trained with (see its `run.json`) |
+| `--agent small` is rejected | the value must be the full key, `rsl_rl_small_cfg_entry_point` |
 | Thousands of `Failed to find rigid body at /World/collisions/groupN` lines | PhysX warnings seen on every run so far; training still completed |
 | No window with `--visualizer kit` | check your display and drivers, and read the first error lines (not diagnosed here) |
