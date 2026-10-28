@@ -9,10 +9,9 @@ Metric definitions extend `docs/METRICS.md`. Network input/output layout: `docs/
 |---|---|---|---|
 | Q1 | How does network **size** affect final performance and learning speed? | A | Minimum |
 | Q2 | At a fixed parameter budget, does **depth vs. width** matter? | B | Maximum |
-| Q3 | Can a **small actor** with a large critic match the baseline? (Relevant for on-robot inference.) | C | Maximum |
 
 - **Minimum plan:** Experiment A only.
-- **Maximum plan:** Experiments A, B and C.
+- **Maximum plan:** Experiments A and B.
 
 ## 2. Fixed conditions
 
@@ -43,13 +42,11 @@ The parameter counts are for the actor (48 inputs, 12 outputs). The critic is th
 | `depth_1` | [3072] | same | 187k | B | to add |
 | `depth_2` | [400, 400] | same | 185k | B | to add |
 | `depth_5` | [208, 208, 208, 208, 208] | same | 187k | B | to add |
-| `asym` | [128, 64, 32] | [512, 256, 128] | 17k | C | to add |
 
 Rationale:
 - **Experiment A** scales Isaac Lab's tapering shape by roughly 3–4× in parameters per step, i.e. on a logarithmic scale.
 - Isaac Lab's own flat-terrain locomotion tasks (ANYmal-D, Go2) use [128, 128, 128], about 41k parameters. The [512, 256, 128] baseline is their rough-terrain size, so it is likely larger than flat walking needs.
 - **Experiment B** keeps the baseline's parameter budget (about 190k) and varies only the depth.
-- **Experiment C** follows Andrychowicz et al. (ICLR 2021): a wide value network does not hurt, while the policy width should be tuned.
 
 ## 4. Seeds
 
@@ -155,14 +152,14 @@ Exclude steps of fallen robots from metrics 1, 2, 3 and 5, and always report met
 
 Measured on these laptops: about 1.5 s per iteration plus about 2 min start-up. At N = 1000, one run takes about 27 min; at N = 1500, about 40 min.
 
-| Stage | Minimum plan (A) | Maximum plan (A + B + C) |
+| Stage | Minimum plan (A) | Maximum plan (A + B) |
 |---|---|---|
 | 0 + 1: baseline × 3 seeds | 3 runs | 3 runs |
-| 2: screening, seed 1 | 4 (`extra_small`, `small`, `medium`, `large`) | 8 (+ `depth_1`, `depth_2`, `depth_5`, `asym`) |
+| 2: screening, seed 1 | 4 (`extra_small`, `small`, `medium`, `large`) | 7 (+ `depth_1`, `depth_2`, `depth_5`) |
 | 3: confirmation (estimate) | ~2 variants × 2 seeds = 4 | ~4 variants × 2 seeds = 8 |
-| **Total runs** | **~11** | **~19** |
-| **Time at N = 1000** | **~5 h** | **~8.5 h** |
-| Per laptop (split in two) | ~2.5 h | ~4.5 h |
+| **Total runs** | **~11** | **~18** |
+| **Time at N = 1000** | **~5 h** | **~8 h** |
+| Per laptop (split in two) | ~2.5 h | ~4 h |
 
 Evaluation adds a few minutes per run.
 
@@ -198,13 +195,12 @@ Logs land in `logs/rsl_rl/quadrustand_spot_flat_<variant>/<timestamp>/`. The see
 
 1. **Bug in `extra_small`.** In `agents/rsl_rl_ppo_cfg.py`, `QuadruStandSpotFlatExtraSmallPPORunnerCfg.__post_init__` calls `super().__post_init()`, which is missing the trailing underscores. Python treats the name as private and raises `AttributeError` when the config is created. Fix it to `super().__post_init__()`, and extend `tests/test_registration.py` to cover this variant.
 2. **README is stale.** Its usage section still lists `small` as [128, 128]; the registered value is [128, 64, 32]. It also does not mention `extra_small` or `--seed`.
-3. **Experiments B and C** (maximum plan only): add the variants `depth_1`, `depth_2`, `depth_5` and `asym` (§3) and register them.
+3. **Experiment B** (maximum plan only): add the variants `depth_1`, `depth_2` and `depth_5` (§3) and register them.
 4. **Evaluation script.** §6.2 requires `scripts/eval/evaluate_policy.py`, which does not exist yet.
 5. **Analysis script.** Stage 5 requires `scripts/analysis/compare_runs.py` to read the TensorBoard logs and evaluation outputs and produce the tables and figures.
 6. **Scope alignment.** `docs/lab_required/project_plan.md` describes **rough** terrain and Hydra overrides for model size and environment count. This benchmark uses **flat** terrain (the only Spot locomotion task in Isaac Lab 3.0) and registered agent variants, with a fixed environment count. Agree with the supervisor, or update the plan, before Laboratory 2.
 
 ## References
 
-- Andrychowicz et al., *What Matters in On-Policy Reinforcement Learning? A Large-Scale Empirical Study*, ICLR 2021. https://arxiv.org/abs/2006.05990
 - Isaac Lab `release/3.0.0` locomotion agent configs (ANYmal-D, Go2): `isaaclab_tasks/core/velocity/config/*/agents/rsl_rl_ppo_cfg.py`
 - NVIDIA, *Closing the Sim-to-Real Gap: Training Spot Quadruped Locomotion with NVIDIA Isaac Lab* (developer blog).

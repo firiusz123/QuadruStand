@@ -17,6 +17,7 @@ ENV/
 # ignore directory contents, but keep the empty folders themselves in git
 logs/*
 !logs/.gitkeep
+!logs/learning_speed.py
 outputs/*
 !outputs/.gitkeep
 !outputs/rsl_rl/
