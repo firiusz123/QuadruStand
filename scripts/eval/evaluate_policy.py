@@ -30,6 +30,8 @@ AGENT_BY_EXPERIMENT = {
     "quadrustand_spot_flat_deep_2": "rsl_rl_deep_2_cfg_entry_point",
     "quadrustand_spot_flat_deep_5": "rsl_rl_deep_5_cfg_entry_point",
 }
+STEP_DIR = Path("results/eval_steps")
+STEP_COLUMNS = ["step", "lin_vel_error", "yaw_error", "fall_rate"]
 COLUMNS = [
     "variant",
     "checkpoint",
@@ -67,14 +69,17 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def evaluate(env: RslRlVecEnvWrapper, policy, num_steps: int) -> dict[str, float]:
+def evaluate(
+    env: RslRlVecEnvWrapper, policy, num_steps: int
+) -> tuple[dict[str, float], list[dict[str, float]]]:
     obs = env.get_observations()
     err_xy_sum = err_yaw_sum = tilt_sum = 0.0
     tilt_max = 0.0
     alive_steps = success_steps = fall_ends = episode_ends = 0
+    steps: list[dict[str, float]] = []
 
     with torch.inference_mode():
-        for _ in range(num_steps):
+        for step_index in range(num_steps):
             obs, _, dones, _ = env.step(policy(obs))
             policy.reset(dones)
             base = env.unwrapped
@@ -93,13 +98,26 @@ def evaluate(env: RslRlVecEnvWrapper, policy, num_steps: int) -> dict[str, float
                 tilt_sum += tilt[alive].sum().item()
                 tilt_max = max(tilt_max, tilt[alive].max().item())
                 success_steps += int(((err_xy < 0.2) & (err_yaw < 0.2) & alive).sum())
+                step_lin = err_xy[alive].mean().item()
+                step_yaw = err_yaw[alive].mean().item()
+            else:
+                step_lin = float("nan")
+                step_yaw = float("nan")
             alive_steps += int(alive.sum())
             fall_ends += int(fallen.sum())
             episode_ends += int(ended.sum())
+            steps.append(
+                {
+                    "step": step_index,
+                    "lin_vel_error": step_lin,
+                    "yaw_error": step_yaw,
+                    "fall_rate": fallen.float().mean().item(),
+                }
+            )
 
     if alive_steps == 0:
         raise RuntimeError("Every robot fell on every step; there is nothing to average.")
-    return {
+    summary = {
         "lin_vel_error": err_xy_sum / alive_steps,
         "yaw_error": err_yaw_sum / alive_steps,
         "tilt_mean": tilt_sum / alive_steps,
@@ -107,6 +125,7 @@ def evaluate(env: RslRlVecEnvWrapper, policy, num_steps: int) -> dict[str, float
         "fall_rate": fall_ends / episode_ends if episode_ends else float("nan"),
         "tracking_success": success_steps / alive_steps,
     }
+    return summary, steps
 
 def discover_checkpoints(root: Path) -> list[tuple[str, Path]]:
     """Return (agent key, checkpoint) for every model_1499.pt under logs/rsl_rl.
@@ -122,6 +141,21 @@ def discover_checkpoints(root: Path) -> list[tuple[str, Path]]:
             continue
         jobs.append((agent, path))
     return jobs
+
+
+def step_csv_path(checkpoint: Path) -> Path:
+    """Name the per-step file from the run folder so seeds of one variant stay separate."""
+    experiment = checkpoint.parents[1].name
+    timestamp = checkpoint.parent.name
+    return STEP_DIR / f"{experiment}_{timestamp}.csv"
+
+
+def write_step_csv(path: Path, rows: list[dict[str, float]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=STEP_COLUMNS)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def append_row(path: Path, row: dict[str, object]) -> None:
@@ -167,7 +201,7 @@ def main() -> None:
                 runner.load(str(checkpoint))
                 policy = runner.get_inference_policy(device=wrapped.unwrapped.device)
                 wrapped.unwrapped.reset(seed=args.seed)
-                metrics = evaluate(wrapped, policy, args.num_steps)
+                metrics, steps = evaluate(wrapped, policy, args.num_steps)
                 row = {
                     "variant": agent,
                     "checkpoint": str(checkpoint),
@@ -177,6 +211,9 @@ def main() -> None:
                     **metrics,
                 }
                 append_row(Path(args.output), row)
+                step_path = step_csv_path(checkpoint)
+                write_step_csv(step_path, steps)
+                print(f"wrote {len(steps)} steps to {step_path}")
                 for key in COLUMNS[5:]:
                     print(f"{key}: {row[key]:.4f}")
         finally:
