@@ -201,67 +201,24 @@ The marker on each curve is the iteration at which its smoothed reward first rea
 *Fill in after the final results. Each conclusion should name its evidence and its caveat.*
 
 **Q1: network size**
-- Finding: [TODO]
-- Evidence: [TODO slide / figure / number]
-- Caveat: [TODO]
+- Finding: Network size matters only on the extrimes. 
+Small -> to small capacity
+Large -> hard to optimize
 
-*Data to look at (preliminary, 1 seed): final rewards span 244–278 across variants; the baseline seeds alone span
-264–275. In the learning-speed table, `deep_1` is clearly slower and `extra_small` is slower to reach the baseline's level.
-Most other differences fall inside the baseline noise band.*
+Final recomendation would be to allways start wit the medium size network.
 
 **Q2: depth at a fixed budget**
-- Finding: [TODO]
-- Evidence: [TODO]
-- Caveat: [TODO]
-
-**Recommendation: network size for Spot flat-terrain locomotion**
-- [TODO: the recommended hidden-layer configuration and why (performance vs training cost vs parameter count).]
+- Finding: At fixed parameter budget, deeper networks learn faster. 
+The mean reward doesn't follow that rule.
 
 ---
 
 ## 11. Limitations
 
-- Flat terrain only (the only Spot locomotion task in Isaac Lab 3.0); [TODO: relation to the rough-terrain plan in the project plan, agreed with the supervisor?]
+- Flat terrain only (the only Spot locomotion task in Isaac Lab 3.0)
 - Most variants have a **single seed**; conclusions rest on the baseline noise band from 3 seeds.
-- Training metrics include exploration noise; the definitive comparison is the deterministic evaluation. [TODO: status]
+- Training metrics include exploration noise; the definitive comparison is the deterministic evaluation.
 - Simulation only; no hardware test.
 - Wall-clock times are comparable only on the same machine.
-- [TODO] anything else (hyperparameters not re-tuned per network size, one task, one robot).
 
 ---
-
-## 12. Next steps
-
-- Reward shaping so Spot stands upright on its front legs (reward-shaping study).
-- Sim-to-real: export the policy and test it on a physical Spot (observation noise is currently disabled in training;
-  `base_lin_vel` needs a state estimator on the real robot).
-- [TODO] anything agreed with the supervisor.
-
----
-
-## Appendix A: reproduction
-
-```bash
-source .venv/bin/activate
-
-# baseline, seed 1
-isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 --seed 1 --max_iterations 1500
-
-# a variant, seed 1
-isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 \
-    --agent rsl_rl_medium_cfg_entry_point --seed 1 --max_iterations 1500
-
-# learning speed of every run
-python logs/learning_speed.py
-```
-
-Details: `docs/lab_required/BENCHMARK.md`, `docs/notes/commands.md`.
-
----
-
-## Appendix B: likely questions
-
-- [TODO] Why PPO with an MLP? Why these sizes?
-- [TODO] How were the seeds and the noise band chosen, and is 3 seeds enough?
-- [TODO] What does the 0.2 action scale do, and would a different value change the result?
-- [TODO] Why flat terrain, and what changes on rough terrain?
