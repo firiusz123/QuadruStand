@@ -174,31 +174,63 @@ The marker on each curve is the iteration at which its smoothed reward first rea
 ---
 
 ## 9. Results: evaluation of the trained policies
+### 9.1. Inference script
+The Evaluation of inference was carried out by running all the model checkpoints that were trained and recording following parameters:
+1. **Network variant**
+2. **Checkpoint of network**
+3. **Seed**
+4. **Number of environments running in parallel**
+5. **Absolute linear velocity error**
+6. **Yaw error**
+7. **Mean tilt of robot**
+8. **Maximal tilt of robot**
+9. **Fall rate of robot across the parallel environments**
 
-[TODO: fill in once the evaluation script has run on every final checkpoint. Mean and min–max over seeds.]
+The script used to recording those parameters take into the count:
+- number of parallel environments
+- Amount of physical steps limit
+- seed
+- and few more to run the isaaclab hydra properly
 
-| Variant | Velocity error [m/s] | Yaw error [rad/s] | Mean tilt [°] | Fall rate | Tracking success |
-|---|---|---|---|---|---|
-| baseline | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
-| extra_small | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
-| small | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
-| medium | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
-| large | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
-| deep_1 | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
-| deep_2 | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
-| deep_5 | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
+The script was run with:
+1. **Hard limit of 1000 physical steps**
+2. **16 parallel environments**
 
-[IMAGE] ![Tracking success vs parameters](images/success_vs_params.png)
-*[TODO caption: tracking success rate against parameter count.]*
+### 9.2. Resulting data
+From the aforementioned parameters the most interesting are: Linear velocity error, yaw rate error and fall rate.
+The Graph below shows the mean value of Linear velocity error , mean yaw rate error and mean fall rate. It is the mean value because 16 environments are running parallel. Also the plots are limited to half of the physical steps due to the robots starting the simulation by spawning again and thus introduce noise from starting the tasks again.
+![Protocol overview](images/img/error_curves.png)
+At the figure it is clearly visible that besides the diffrence in the Linear velocity there is not much of a diffrence in models in **Yaw rate** and **fall rate**. At first the fall rate might seem like a simple bug because it is just a ssingle horizontal line, but fear not. Simply all the models were trained enough not to fall. Another key factor occuring from the plot is that the key diffrence in them is the Linear Velocity.
 
-[IMAGE] ![Video or frames of the learned gait](images/gait_frames.png)
-*[TODO: frames or a link to a video of the best policy.]*
+
+Following scatter plot shows the **mediana of Yaw rate error** at Y axis and **mediana of Linear Velocity error** at X axis per each of the models. **So the closer the model is to point (0,0) the better it get**
+![Protocol overview](images/img/linear_yaw_error_scatter.png)
+
+Thus for ease of assesing which model is easier the following succes score function is constructed:
+### Evaluation Metric Formulation
+
+1. **Composite Error per Run:**
+   $$f(x_i, y_i) = 10x_i + 5y_i$$
+
+2. **Maximum Observed Error:**
+   $$e_{\max} = \max_{j \in \{1, \dots, N\}} f(x_j, y_j)$$
+
+3. **Inverted Success Score:**
+   $$S_i = (e_{\max} + 2) - f(x_i, y_i)$$
+
+**Combined Form:**
+$$S(x_i, y_i) = \left( \max_{j=1}^{N} (10x_j + 5y_j) + 2 \right) - (10x_i + 5y_i)$$
+
+The weights for Linear velocity error are twice the weights for yaw rate error due to the importance of the Linear velocity error. The scores are also reversed so it is easier to check for best model as the one with most score. Below is the Bar plot with the Succes metric calculated per each of the models.
+
+![Protocol overview](images/img/succes_comparison.png)
 
 ---
 
 ## 10. Conclusions
 
 *Fill in after the final results. Each conclusion should name its evidence and its caveat.*
+
 
 **Q1: network size**
 - Finding: Network size matters only on the extrimes. 
@@ -210,6 +242,10 @@ Final recomendation would be to allways start wit the medium size network.
 **Q2: depth at a fixed budget**
 - Finding: At fixed parameter budget, deeper networks learn faster. 
 The mean reward doesn't follow that rule.
+
+**Q3: Defining reward for agent doesnt always lead to expected result**
+- even with defining many rewards for agent and thus softly constraining it to certain learning direction. One might susspect that with linear velocity error at some point it will start walking or running as it is fastest way of locomotion for such robot right? **WRONG** it started jumping.
+
 
 ---
 
