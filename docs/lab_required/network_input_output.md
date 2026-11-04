@@ -113,7 +113,7 @@ discarded when the policy is exported for deployment.
 
 ## Where the sizes change if you change the setup
 
-- **Network size (small / medium / large)**: only the hidden layers change. Input 48 and output 12 stay
+- **Network size or depth (any agent variant)**: only the hidden layers change. Input 48 and output 12 stay
   fixed.
 - **Adding or removing an observation term (Plan 03)**: the input size changes, and old checkpoints no longer
   load.

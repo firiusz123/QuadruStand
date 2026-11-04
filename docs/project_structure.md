@@ -32,20 +32,28 @@ QuadruStand/
 ├── src/quadru_stand/         # our code; the only folder that Python imports from (section 5)
 │   ├── __init__.py
 │   └── tasks/
-│       ├── __init__.py       # auto-imports sub-packages so every gym.register runs
-│       └── locomotion/spot_flat/
-│           ├── __init__.py       # gym.register(...)  ← the task is registered here
-│           ├── flat_env_cfg.py   # QuadruStandSpotFlatEnvCfg: inherits Isaac Lab's Spot config
-│           └── agents/rsl_rl_ppo_cfg.py   # baseline / small / medium / large PPO runner configs
+│       ├── __init__.py           # gym.register(...): the task and every --agent key are registered here
+│       ├── flat_env_cfg.py       # QuadruStandSpotFlatEnvCfg: inherits Isaac Lab's Spot config
+│       └── rsl_rl_ppo_cfg.py     # PPO runner configs: baseline, size variants, depth variants
+├── scripts/                  # command-line tools, always run from the repo root
+│   ├── evaluate_policy.py        #   deterministic evaluation of trained policies -> results/*.csv
+│   ├── learning_speed.py         #   learning speed of every run in logs/ (BENCHMARK.md, section 6.1)
+│   ├── make_learning_speed_plots.py  # figures for the presentation
+│   └── configure_pyrefly.sh      #   editor helper (README: Editor)
 ├── tests/test_registration.py
-├── docs/                     # plans/, notes/ (this file), network_input_output.md
-├── logs/                     # training output (contents are gitignored)
-├── scripts/  configs/  results/  notebooks/  hpo_studies/  outputs/   # placeholders for later plans
+├── notebooks/                # exploratory analysis of the evaluation CSVs
+├── logs/                     # training runs (contents gitignored; only .gitkeep is tracked)
+├── results/                  # evaluation CSVs (gitignored because of *.csv)
+├── docs/                     # start at docs/README.md
 └── README.md
 ```
 
-Files you will edit regularly: `flat_env_cfg.py` and `agents/rsl_rl_ppo_cfg.py`. Files you should
-almost never touch: every `__init__.py`, `pyproject.toml`.
+Files you will edit regularly: `flat_env_cfg.py` and `rsl_rl_ppo_cfg.py`. Files you should
+almost never touch: `pyproject.toml`, and `tasks/__init__.py` (only when adding an agent variant or a task).
+
+The layout used to be nested (`tasks/locomotion/spot_flat/agents/...`, plus empty placeholder folders). With one
+task that was more structure than needed, so it was flattened. Task ids, `--agent` keys, class names and log
+folder names did not change, so old runs and commands keep working.
 
 ## 3. The virtual environment and how Isaac Lab lives inside it
 
@@ -155,23 +163,21 @@ task. (Isaac Lab's own tasks are imported directly in its code, so on this machi
 
 ## 7. How the task gets registered
 
-1. `import quadru_stand.tasks` runs `tasks/__init__.py`, which calls
-   `import_packages(__name__, ["utils", ".mdp"])`.
-2. That walker imports every sub-package (a folder with `__init__.py`) below it and recurses. Plain `.py`
-   files (`flat_env_cfg.py`, `rsl_rl_ppo_cfg.py`) are **not** imported at this stage.
-3. Importing `spot_flat/__init__.py` executes its `gym.register(...)` call. Importing runs the file, and that is
-   the whole trick.
-4. The skip list `["utils", ".mdp"]` is copied from Isaac Lab's template. Any sub-package whose dotted name
-   contains those strings is skipped. It does nothing for us today (our `mdp/` is outside `tasks/`).
-5. Empty `__init__.py` files exist only to mark folders as packages. The walker only sees folders that have one.
+1. `import quadru_stand.tasks` runs `tasks/__init__.py` from top to bottom. Importing a package executes its
+   `__init__.py`, and that file contains the `gym.register(...)` call. Importing runs the file, and that is the
+   whole trick.
+2. The plain `.py` files next to it (`flat_env_cfg.py`, `rsl_rl_ppo_cfg.py`) are **not** imported at this stage.
+   They are only referred to by name (see below) and imported when the task is actually used.
+3. Earlier versions of this project used sub-packages plus Isaac Lab's `import_packages` walker, which imports
+   every sub-package of `tasks/` automatically. With a single task that was not needed. If many tasks are added
+   later, that pattern can be brought back (see Isaac Lab's project template).
 
-`__name__` is a variable Python sets in every module to its dotted import name (for example
-`quadru_stand.tasks.locomotion.spot_flat`). `from . import agents` is a relative import: "from my own
-package, import the sub-package `agents`".
+`__name__` is a variable Python sets in every module to its dotted import name. In `tasks/__init__.py` it is
+`quadru_stand.tasks`.
 
 ### What `gym.register` stores
 
-`gym.register` adds a **recipe** to gymnasium's global registry. It builds nothing. Our recipe:
+`gym.register` adds a **recipe** to gymnasium's global registry. It builds nothing. Our recipe (shortened):
 
 ```python
 gym.register(
@@ -180,21 +186,20 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point":          f"{__name__}.flat_env_cfg:QuadruStandSpotFlatEnvCfg",
-        "rsl_rl_cfg_entry_point":       f"{agents.__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatPPORunnerCfg",
-        "rsl_rl_small_cfg_entry_point": "...:QuadruStandSpotFlatSmallPPORunnerCfg",
-        "rsl_rl_medium_cfg_entry_point": "...", "rsl_rl_large_cfg_entry_point": "...",
+        "rsl_rl_cfg_entry_point":       f"{__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatPPORunnerCfg",
+        "rsl_rl_small_cfg_entry_point": f"{__name__}.rsl_rl_ppo_cfg:QuadruStandSpotFlatSmallPPORunnerCfg",
+        # ... extra_small, medium, large, deep_1, deep_2, deep_5 follow the same pattern
     },
 )
 ```
 
 - The values are **strings** of the form `"dotted.module.path:ClassName"`. They are resolved lazily with
   `importlib.import_module` + `getattr` only when the task is used. The reason: registration runs at CLI
-  start-up for every task, and importing every config eagerly would be slow (Isaac Lab's own walker docstring
-  says the same).
-- `f"{agents.__name__}.rsl_rl_ppo_cfg:..."` is an f-string: `{...}` is replaced by the value, giving
-  `quadru_stand.tasks.locomotion.spot_flat.agents.rsl_rl_ppo_cfg:...`.
+  start-up, and importing every config eagerly would be slow.
+- `f"{__name__}.rsl_rl_ppo_cfg:..."` is an f-string: `{...}` is replaced by the value, giving
+  `quadru_stand.tasks.rsl_rl_ppo_cfg:...`.
 - The key names are our choice but must end in `_cfg_entry_point`. `--agent <key>` looks up that key.
-  Without `--agent`, the train script uses `rsl_rl_cfg_entry_point`.
+  Without `--agent`, the train script uses `rsl_rl_cfg_entry_point` (the baseline).
 - The upstream Spot task has no `default_agent` and no play variant, so none was added.
 
 ## 8. Config classes and inheritance
@@ -220,9 +225,9 @@ def __post_init__(self):
   were missing, `sim.dt` fell back to a default).
 - The call chain runs top-down through five classes (ours → `SpotFlatEnvCfg` → `LocomotionVelocityRoughEnvCfg`
   → `ManagerBasedRLEnvCfg` → `ManagerBasedEnvCfg`), so **our lines run last and win**.
-- The agent configs follow the same idea: they subclass `SpotFlatPPORunnerCfg`, set `experiment_name` as a
-  class attribute (plain string), and change `hidden_dims` of the nested `actor`/`critic` objects in
-  `__post_init__`. Everything else (PPO settings, activation, steps per env) stays inherited.
+- The agent configs (`rsl_rl_ppo_cfg.py`) follow the same idea: they subclass `SpotFlatPPORunnerCfg`, set
+  `experiment_name` as a class attribute (plain string), and change `hidden_dims` of the nested `actor`/`critic`
+  objects in `__post_init__`. Everything else (PPO settings, activation, steps per env) stays inherited.
 
 ## 9. What runs at training time
 
@@ -256,7 +261,14 @@ python -m pytest tests/test_registration.py -q
 isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 --num_envs 512 --max_iterations 10
 isaaclab train --rl_library rsl_rl --task QuadruStand-Velocity-Flat-Spot-v0 --agent rsl_rl_small_cfg_entry_point ...
 isaaclab train --rl_library rsl_rl --help        # full option list (plain `isaaclab train --help` shows only --rl_library)
+
+# analysis scripts (from the repo root)
+python scripts/learning_speed.py                 # learning speed of every run in logs/
+python scripts/evaluate_policy.py --help         # evaluate trained policies (writes results/*.csv)
+python scripts/make_learning_speed_plots.py      # figures for docs/presentation/
 ```
+
+More commands, with the exact flags: `docs/commands.md`.
 
 Logs go to `logs/rsl_rl/<experiment_name>/<timestamp>/`: `model_*.pt` checkpoints, `params/env.yaml` and
 `params/agent.yaml` (the exact configs used), TensorBoard event files.
@@ -266,9 +278,9 @@ Logs go to `logs/rsl_rl/<experiment_name>/<timestamp>/`: `model_*.pt` checkpoint
 | You want to... | Do |
 |---|---|
 | Change a reward, termination, command range | Edit `__post_init__` in `flat_env_cfg.py` (after `super()`) |
-| Change network size / PPO settings | Edit `agents/rsl_rl_ppo_cfg.py` |
-| Add a new agent variant | New subclass there + a new `rsl_rl_<name>_cfg_entry_point` key in `spot_flat/__init__.py` |
-| Add a new task | New folder under `tasks/locomotion/` with an `__init__.py` containing `gym.register(...)` (the walker finds it, no other edits) |
+| Change network size / PPO settings | Edit `rsl_rl_ppo_cfg.py` |
+| Add a new agent variant | New subclass in `rsl_rl_ppo_cfg.py` + a new `rsl_rl_<name>_cfg_entry_point` key in `tasks/__init__.py` + a row in `tests/test_registration.py` + the variant name in `AGENT_BY_EXPERIMENT` in `scripts/evaluate_policy.py` |
+| Add a new task | Write its config file in `tasks/` and add another `gym.register(...)` call to `tasks/__init__.py` |
 | Add a Python dependency | `uv pip install <pkg>`, and add it to `dependencies` in `pyproject.toml` if the code needs it |
 | Changed `pyproject.toml` metadata | `uv pip install -e .` again |
 | Verify nothing broke | `python -m pytest tests/test_registration.py -q`, then a short smoke run |

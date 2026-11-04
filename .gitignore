@@ -14,18 +14,10 @@ env/
 ENV/
 
 # ---- Isaac Lab / Isaac Sim (runtime outputs) ----
-# ignore directory contents, but keep the empty folders themselves in git
+# logs/ holds training runs only: ignore its contents but keep the empty folder in git
 logs/*
 !logs/.gitkeep
-!logs/learning_speed.py
-outputs/*
-!outputs/.gitkeep
-!outputs/rsl_rl/
-!outputs/hpo/
-outputs/rsl_rl/*
-!outputs/rsl_rl/.gitkeep
-outputs/hpo/*
-!outputs/hpo/.gitkeep
+outputs/
 *.pt
 *.onnx
 *.pkl

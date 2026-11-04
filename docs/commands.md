@@ -20,15 +20,19 @@ One variant has **four different names**, and they are easy to mix up. The comma
 | Variant label (our word) | **Agent key** = what you pass to `--agent` | Config class (in `rsl_rl_ppo_cfg.py`) | `experiment_name` = log folder `logs/rsl_rl/...` | Network (actor and critic) |
 |---|---|---|---|---|
 | baseline | `rsl_rl_cfg_entry_point` (the default; **no** `baseline` in the key) | `QuadruStandSpotFlatPPORunnerCfg` | `quadrustand_spot_flat_baseline` | `[512, 256, 128]` |
-| small | `rsl_rl_small_cfg_entry_point` | `QuadruStandSpotFlatSmallPPORunnerCfg` | `quadrustand_spot_flat_small` | `[128, 128]` |
+| extra_small | `rsl_rl_extra_small_cfg_entry_point` | `QuadruStandSpotFlatExtraSmallPPORunnerCfg` | `quadrustand_spot_flat_extra_small` | `[64, 32, 16]` |
+| small | `rsl_rl_small_cfg_entry_point` | `QuadruStandSpotFlatSmallPPORunnerCfg` | `quadrustand_spot_flat_small` | `[128, 64, 32]` |
 | medium | `rsl_rl_medium_cfg_entry_point` | `QuadruStandSpotFlatMediumPPORunnerCfg` | `quadrustand_spot_flat_medium` | `[256, 128, 64]` |
 | large | `rsl_rl_large_cfg_entry_point` | `QuadruStandSpotFlatLargePPORunnerCfg` | `quadrustand_spot_flat_large` | `[1024, 512, 256]` |
+| deep_1 | `rsl_rl_deep_1_cfg_entry_point` | `QuadruStandSpotFlatDeep_1_PPORunnerCfg` | `quadrustand_spot_flat_deep_1` | `[3072]` |
+| deep_2 | `rsl_rl_deep_2_cfg_entry_point` | `QuadruStandSpotFlatDeep_2_PPORunnerCfg` | `quadrustand_spot_flat_deep_2` | `[400, 400]` |
+| deep_5 | `rsl_rl_deep_5_cfg_entry_point` | `QuadruStandSpotFlatDeep_5_PPORunnerCfg` | `quadrustand_spot_flat_deep_5` | `[208, 208, 208, 208, 208]` |
 
-- The **agent key** is a key in the task's registration kwargs (`spot_flat/__init__.py`). `--agent small` would fail.
+- The **agent key** is a key in the task's registration kwargs (`src/quadru_stand/tasks/__init__.py`). `--agent small` would fail.
 - The **config class** is what the key points to. The **experiment name** is set inside that class and decides the log
   folder. The command line never takes either of these.
 - The **task id** is a different thing again: `--task QuadruStand-Velocity-Flat-Spot-v0` selects the environment,
-  and one task id has all four keys.
+  and the one task id has all the keys above.
 - `--experiment_name <name>` also exists and overrides the log folder name for a run. Without it the folder comes
   from the config class.
 - Each run folder records the key it was started with in `run.json` (`"metadata": {"agent": "..."}`). The experiment
@@ -55,6 +59,13 @@ One variant has **four different names**, and they are easy to mix up. The comma
 | Train with a window | add `--visualizer kit` (alias `--viz kit`), usually with fewer envs, e.g. `--num_envs 64` | not run |
 | Draw only some of the envs | add `--max_visible_envs 16` | not run |
 | Choose the GPU | add `--device cuda:0` | not run |
+
+**Keep benchmark runs clean.** `scripts/learning_speed.py` and `scripts/evaluate_policy.py` pick up every run folder under
+`logs/rsl_rl/`. A quick test with the default agent lands in `quadrustand_spot_flat_baseline/` and becomes a fourth
+"baseline" run, which changes the baseline noise band. For tests add `--experiment_name scratch_test`: then
+`evaluate_policy.py` skips it (it only knows the benchmark experiment names) and `learning_speed.py` lists it as an
+extra row without using it for the baseline. Delete such folders when you are done.
+For real benchmark runs always pass `--seed` explicitly (BENCHMARK.md, section 4).
 
 Notes:
 
@@ -151,7 +162,30 @@ python -c "import torch; sd = torch.load('logs/rsl_rl/<experiment>/<timestamp>/m
 
 For the baseline this shows the first layer `(512, 48)` (hidden size, input size) and the last `(12, 128)` (output size).
 
-## 7. Debug an environment without training
+## 7. Analyse results (scripts)
+
+All scripts live in `scripts/` and are run from the repo root.
+
+| Goal | Command | Status |
+|---|---|---|
+| Learning speed of every run in `logs/rsl_rl/` (see `docs/lab_required/BENCHMARK.md`, section 6.1) | `python scripts/learning_speed.py` | verified |
+| Same, other smoothing window, and save a CSV | `python scripts/learning_speed.py --window 30 --csv results/learning_speed.csv` | not run |
+| Regenerate the learning-speed figures (writes to `docs/presentation/images/`) | `python scripts/make_learning_speed_plots.py` | verified |
+| List the options of the evaluation script | `python scripts/evaluate_policy.py --help` | verified |
+| Evaluate every `model_1499.pt` found under `logs/rsl_rl/` (starts the simulator) | `python scripts/evaluate_policy.py` | not run |
+| Evaluate one checkpoint | `python scripts/evaluate_policy.py --agent rsl_rl_small_cfg_entry_point --checkpoint logs/rsl_rl/<experiment>/<timestamp>/model_1499.pt` | not run |
+
+Notes on `evaluate_policy.py` (read from the script):
+
+- Defaults: 1024 environments, 3000 steps, evaluation seed 1000, the deterministic (mean) policy.
+- It writes one row per policy to `results/eval_metrics.csv` and per-step data to
+  `results/eval_steps/<experiment>_<timestamp>.csv`. `results/*.csv` is gitignored (`*.csv` in `.gitignore`).
+- Without `--checkpoint` it evaluates `model_1499.pt` of every run (the checkpoint name is fixed in the script) and
+  skips experiments it does not know. The experiment-to-agent-key mapping is `AGENT_BY_EXPERIMENT` at the top of the
+  script. **When you add an agent variant, add it there too.**
+- `notebooks/data_comparison.ipynb` reads these CSV files.
+
+## 8. Debug an environment without training
 
 | Goal | Command | Status |
 |---|---|---|
@@ -162,7 +196,7 @@ For the baseline this shows the first layer `(512, 48)` (hidden size, input size
 Preset options for a task appear at the end of `--help` when `--task=...` is passed. The Spot config defines the
 presets `isaacsim_physx` (default), `physx`, `newton_mjwarp` and `newton_kamino`. Only the default has been used here.
 
-## 8. Packages and environment
+## 9. Packages and environment
 
 | Goal | Command | Status |
 |---|---|---|
@@ -171,15 +205,16 @@ presets `isaacsim_physx` (default), `physx`, `newton_mjwarp` and `newton_kamino`
 | Install another package | `uv pip install <package>` | verified |
 | Record exact versions | `uv pip freeze > requirements.lock` | not run |
 | Python and Isaac Lab location | `python -c "import isaaclab; print(isaaclab.__file__)"` | verified |
+| Editor helper (Pyrefly can resolve Isaac Lab, see README) | `./scripts/configure_pyrefly.sh` | syntax checked after the move; not run |
 
 **Never run:** `uv sync`, `uv lock`, `sudo`, `apt`, or anything that modifies `~/tools/nvidia/IsaacLab`.
 
-## 9. Other `isaaclab` subcommands
+## 10. Other `isaaclab` subcommands
 
 Seen in `isaaclab --help` (not tried here): `train_multigpu`, `benchmark`, `microbenchmark`, `demo`,
 `example`, `leapp` (export or deploy a policy), `teleop`. Policy export and sim-to-real are later plans.
 
-## 10. Quick troubleshooting
+## 11. Quick troubleshooting
 
 | Symptom | Likely cause / what to check |
 |---|---|

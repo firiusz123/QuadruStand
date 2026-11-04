@@ -1,5 +1,10 @@
 # Plan 01 — Register a QuadruStand Spot task and benchmark agent variants
 
+> **Historical plan (completed).** It describes the repository as it was when the task was first registered.
+> Afterwards the layout was flattened (the code now lives directly in `src/quadru_stand/tasks/`, with no
+> `locomotion/spot_flat/agents/` levels) and more agent variants were added (`extra_small`, `deep_*`; `small` is
+> now `[128, 64, 32]`). For the current state see `docs/project_structure.md`.
+
 ## Goal
 
 Create the project's first Isaac Lab task, `QuadruStand-Velocity-Flat-Spot-v0`, as a thin wrapper

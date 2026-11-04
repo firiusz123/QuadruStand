@@ -1,6 +1,6 @@
 """Learning-speed figures for the presentation (docs/presentation/images/).
 
-Reads every run under logs/rsl_rl/ and reuses the helpers of logs/learning_speed.py (same smoothing, same
+Reads every run under logs/rsl_rl/ and reuses the helpers of scripts/learning_speed.py (same smoothing, same
 "final value", same 90% rule), so the figures match the table printed by that script.
 
 Writes:
@@ -9,7 +9,7 @@ Writes:
   images/learning_speed_curves_expA.png smoothed reward curves with the 90% crossing, Experiment A
   images/learning_speed_curves_expB.png same, Experiment B
 
-Usage (repo root, .venv active):  python docs/presentation/make_learning_speed_plots.py
+Usage (repo root, .venv active):  python scripts/make_learning_speed_plots.py
 """
 
 import glob
@@ -24,10 +24,10 @@ import numpy as np  # noqa: E402
 import yaml  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "..", "logs"))
+sys.path.insert(0, HERE)
 import learning_speed as ls  # noqa: E402  (reuses load_run, smooth, first_reach)
 
-OUT = os.path.join(HERE, "images")
+OUT = os.path.join(HERE, "..", "docs", "presentation", "images")
 WINDOW = 20
 EXP_A = ["extra_small", "small", "medium", "baseline", "large"]  # ordered by parameter count
 EXP_B = ["deep_1", "deep_2", "baseline", "deep_5"]  # ordered by number of hidden layers

@@ -1,7 +1,7 @@
 # Network-shape benchmark: protocol
 
 Applies to `QuadruStand-Velocity-Flat-Spot-v0` (Spot, flat terrain, velocity tracking, rsl_rl PPO).
-Metric definitions extend `docs/METRICS.md`. Network input/output layout: `docs/network_input_output.md`.
+Metric definitions extend `docs/lab_required/METRICS.md`. Network input/output layout: `docs/lab_required/network_input_output.md`.
 
 ## 1. Questions
 
@@ -35,13 +35,13 @@ The parameter counts are for the actor (48 inputs, 12 outputs). The critic is th
 | Key (`--agent rsl_rl_<key>_cfg_entry_point`) | Actor `hidden_dims` | Critic `hidden_dims` | Actor params | Exp. | Status |
 |---|---|---|---|---|---|
 | baseline (default, no `--agent`) | [512, 256, 128] | same | 191k | A, B | registered |
-| `extra_small` | [64, 32, 16] | same | 6k | A | registered (see §10, bug) |
+| `extra_small` | [64, 32, 16] | same | 6k | A | registered |
 | `small` | [128, 64, 32] | same | 17k | A | registered |
 | `medium` | [256, 128, 64] | same | 54k | A | registered |
 | `large` | [1024, 512, 256] | same | 709k | A | registered |
-| `depth_1` | [3072] | same | 187k | B | to add |
-| `depth_2` | [400, 400] | same | 185k | B | to add |
-| `depth_5` | [208, 208, 208, 208, 208] | same | 187k | B | to add |
+| `deep_1` | [3072] | same | 187k | B | registered |
+| `deep_2` | [400, 400] | same | 185k | B | registered |
+| `deep_5` | [208, 208, 208, 208, 208] | same | 187k | B | registered |
 
 Rationale:
 - **Experiment A** scales Isaac Lab's tapering shape by roughly 3–4× in parameters per step, i.e. on a logarithmic scale.
@@ -124,7 +124,7 @@ Run the evaluation (§6.2) on the final checkpoint `model_<N>.pt` of every run.
 | **Learning speed** | derived | First iteration at which the smoothed mean reward reaches 90% of the variant's own final value. Also report the iteration at which it reaches 90% of the **baseline's** final value; "never" is a valid result. |
 | Wall-clock time | run duration | Training cost (compare only on the same machine) |
 
-### 6.2 Evaluation metrics (`docs/METRICS.md`, computed by an evaluation script)
+### 6.2 Evaluation metrics (`docs/lab_required/METRICS.md`, computed by `scripts/evaluate_policy.py`)
 
 The training metrics include exploration noise. The definitive comparison uses a separate evaluation of each trained policy under identical conditions:
 - **Deterministic policy:** the mean action, with no sampling.
@@ -155,7 +155,7 @@ Measured on these laptops: about 1.5 s per iteration plus about 2 min start-up. 
 | Stage | Minimum plan (A) | Maximum plan (A + B) |
 |---|---|---|
 | 0 + 1: baseline × 3 seeds | 3 runs | 3 runs |
-| 2: screening, seed 1 | 4 (`extra_small`, `small`, `medium`, `large`) | 7 (+ `depth_1`, `depth_2`, `depth_5`) |
+| 2: screening, seed 1 | 4 (`extra_small`, `small`, `medium`, `large`) | 7 (+ `deep_1`, `deep_2`, `deep_5`) |
 | 3: confirmation (estimate) | ~2 variants × 2 seeds = 4 | ~4 variants × 2 seeds = 8 |
 | **Total runs** | **~11** | **~18** |
 | **Time at N = 1000** | **~5 h** | **~8 h** |
@@ -188,16 +188,26 @@ Logs land in `logs/rsl_rl/quadrustand_spot_flat_<variant>/<timestamp>/`. The see
 
 - Log every benchmark run in `results/benchmark_runs.csv` with these columns: `variant, seed, N, machine, run_dir, started, duration_min, status, notes`.
 - Mark failed or interrupted runs as such and rerun them with the same seed. Never silently drop them.
-- Commit `results/` (CSV, final figures and tables), not `logs/`.
+- Commit `results/` (CSV, final figures and tables), not `logs/`. Note: `.gitignore` currently ignores `*.csv`, so CSV files need `git add -f` (or a change to `.gitignore`) to be committed.
 - Do not change code, configs or the Isaac Lab checkout during a benchmark. Each run's `git/*.diff` records any uncommitted change, so check it is empty.
 
-## 10. Open items before the benchmark starts
+## 10. Items before the benchmark starts (status)
 
-1. **Bug in `extra_small`.** In `agents/rsl_rl_ppo_cfg.py`, `QuadruStandSpotFlatExtraSmallPPORunnerCfg.__post_init__` calls `super().__post_init()`, which is missing the trailing underscores. Python treats the name as private and raises `AttributeError` when the config is created. Fix it to `super().__post_init__()`, and extend `tests/test_registration.py` to cover this variant.
-2. **README is stale.** Its usage section still lists `small` as [128, 128]; the registered value is [128, 64, 32]. It also does not mention `extra_small` or `--seed`.
-3. **Experiment B** (maximum plan only): add the variants `depth_1`, `depth_2` and `depth_5` (§3) and register them.
-4. **Evaluation script.** §6.2 requires `scripts/eval/evaluate_policy.py`, which does not exist yet.
-5. **Analysis script.** Stage 5 requires `scripts/analysis/compare_runs.py` to read the TensorBoard logs and evaluation outputs and produce the tables and figures.
+Done:
+
+1. **`extra_small` bug** (`super().__post_init()` typo): fixed. `tests/test_registration.py` now covers all 8 registered variants.
+2. **README**: updated (variants, `--seed`, script locations).
+3. **Experiment B variants**: registered as `deep_1`, `deep_2`, `deep_5` (the keys use `deep`, not `depth`).
+4. **Evaluation script**: `scripts/evaluate_policy.py` (writes `results/eval_metrics.csv` and `results/eval_steps/`).
+
+Partly done:
+
+5. **Analysis.** Stage 5 names `scripts/analysis/compare_runs.py`, which was not written. The learning-speed part is covered by
+   `scripts/learning_speed.py` and `scripts/make_learning_speed_plots.py`; the evaluation CSVs are explored in
+   `notebooks/data_comparison.ipynb`.
+
+Open:
+
 6. **Scope alignment.** `docs/lab_required/project_plan.md` describes **rough** terrain and Hydra overrides for model size and environment count. This benchmark uses **flat** terrain (the only Spot locomotion task in Isaac Lab 3.0) and registered agent variants, with a fixed environment count. Agree with the supervisor, or update the plan, before Laboratory 2.
 
 ## References

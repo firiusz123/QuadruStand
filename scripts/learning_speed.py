@@ -16,8 +16,8 @@ A run outside shows its distance to the nearest band edge: positive = slower tha
 negative = faster than the fastest baseline seed. This is the difference "with the noise taken out".
 
 Usage (from the repo root, with .venv active):
-    python logs/learning_speed.py
-    python logs/learning_speed.py --window 30 --csv logs/learning_speed.csv
+    python scripts/learning_speed.py
+    python scripts/learning_speed.py --window 30 --csv results/learning_speed.csv
 """
 
 import argparse
@@ -31,7 +31,8 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 
 TAG = "Train/mean_reward"
 BASELINE_EXPERIMENT = "quadrustand_spot_flat_baseline"
-LOGS_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rsl_rl")
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOGS_ROOT = os.path.join(REPO_ROOT, "logs", "rsl_rl")
 
 
 def smooth(values, window):

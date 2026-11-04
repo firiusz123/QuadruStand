@@ -11,9 +11,13 @@ TASK_ID = "QuadruStand-Velocity-Flat-Spot-v0"
 
 EXPECTED_HIDDEN_DIMS = {
     "rsl_rl_cfg_entry_point": ("quadrustand_spot_flat_baseline", [512, 256, 128]),
-    "rsl_rl_small_cfg_entry_point": ("quadrustand_spot_flat_small", [128, 128]),
+    "rsl_rl_extra_small_cfg_entry_point": ("quadrustand_spot_flat_extra_small", [64, 32, 16]),
+    "rsl_rl_small_cfg_entry_point": ("quadrustand_spot_flat_small", [128, 64, 32]),
     "rsl_rl_medium_cfg_entry_point": ("quadrustand_spot_flat_medium", [256, 128, 64]),
     "rsl_rl_large_cfg_entry_point": ("quadrustand_spot_flat_large", [1024, 512, 256]),
+    "rsl_rl_deep_1_cfg_entry_point": ("quadrustand_spot_flat_deep_1", [3072]),
+    "rsl_rl_deep_2_cfg_entry_point": ("quadrustand_spot_flat_deep_2", [400, 400]),
+    "rsl_rl_deep_5_cfg_entry_point": ("quadrustand_spot_flat_deep_5", [208, 208, 208, 208, 208]),
 }
 
 
@@ -22,7 +26,7 @@ def test_task_registered():
     assert spec.entry_point == "isaaclab.envs:ManagerBasedRLEnv"
     assert (
         spec.kwargs["env_cfg_entry_point"]
-        == "quadru_stand.tasks.locomotion.spot_flat.flat_env_cfg:QuadruStandSpotFlatEnvCfg"
+        == "quadru_stand.tasks.flat_env_cfg:QuadruStandSpotFlatEnvCfg"
     )
 
 
