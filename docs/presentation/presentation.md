@@ -18,7 +18,6 @@
 | Q2 | At a fixed parameter budget, does **depth vs. width** matter? | B (depth) |
 
 
-
 ---
 
 ## 2. Setup
